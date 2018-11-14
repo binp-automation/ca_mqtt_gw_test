@@ -1,0 +1,12 @@
+record(stringout, "STRING") {
+    field(VAL, "initial")
+}
+
+record(longout, "INT") {
+    field(VAL, 0)
+}
+
+record(waveform, "WAVEFORM") {
+    field(NELM, "100")
+    field(FTVL, "LONG")
+}
