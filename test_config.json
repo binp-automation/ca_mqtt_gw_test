@@ -1,0 +1,47 @@
+{
+    "mqtt_broker_address": "127.0.0.1",
+    "connections": [
+        {
+            "mqtt": "m/wave/o/",
+            "pv": "E_WAVE_I",
+            "direction": "mp",
+            "datatype": "wfint",
+            "qos": 2
+        },
+        {
+            "mqtt": "m/wave/i/",
+            "pv": "E_WAVE_O",
+            "direction": "pm",
+            "datatype": "wfint",
+            "qos": 2
+        },
+        {
+            "mqtt": "m/int/o",
+            "pv": "E_INT_I",
+            "direction": "mp",
+            "datatype": "int",
+            "qos": 2
+        },
+        {
+            "mqtt": "m/int/i",
+            "pv": "E_INT_O",
+            "direction": "pm",
+            "datatype": "int",
+            "qos": 2
+        },
+        {
+            "mqtt": "m/str/o",
+            "pv": "E_STR_I",
+            "direction": "mp",
+            "datatype": "string",
+            "qos": 2
+        },
+        {
+            "mqtt": "m/str/i",
+            "pv": "E_STR_O",
+            "direction": "pm",
+            "datatype": "string",
+            "qos": 2
+        }
+    ]
+}
