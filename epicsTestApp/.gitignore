@@ -1,3 +1,8 @@
 bin/*
 db/*
 dbd/*
+configure/O.linux-x86_64/*
+iocBoot/ioctest/envPaths
+testApp/Db/O.linux-x86_64/*
+testApp/src/O.Common/*
+testApp/src/O.linux-x86_64/*
