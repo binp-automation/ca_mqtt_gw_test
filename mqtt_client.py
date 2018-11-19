@@ -1,58 +1,91 @@
+import time
 import paho.mqtt.client as mqtt
+import traceback
+import logging
 
+logger = logging.getLogger("mqtt")
 
-def on_message(mc, _, msg):
-    print("message: %s: %s" % (msg.topic, msg.payload))
-    if msg.topic == topic and msg.payload == payload:
-        global passed
-        passed = True
-    mc.disconnect()
+def hook(func):
+    def deco(self, *args, **kwargs):
+        try:
+            func(self, *args, **kwargs)
+        except:
+            logger.error(traceback.format_exc())
+    return deco
 
-class MqttClient(mqtt.Client):
+class MqttClient:
     def __init__(self, config):
-        super().__init__(config["mqtt"])
+        self.config = config
+        self.name = config["mqtt"]
+        self.d = config["direction"]
+
+        self.mqtt = mqtt.Client(self.name)
+        self.ready = False
+
+class MqttSender(MqttClient):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.mqtt.on_connect = self.on_connect
+        self.mqtt.on_publish = self.on_publish
+
+    @hook
+    def on_connect(self, *args):
+        logger.debug("%s .on_connect(rc=%s)" % (self.name, args[-1]))
+        self.ready = True
+
+    @hook
+    def on_publish(self, *args):
+        logger.debug("%s .on_publish(%s)" % (self.name, args))
+
+class MqttReceiver(MqttClient):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.mqtt.on_connect = self.on_connect
+        self.mqtt.on_subscribe = self.on_subscribe
+        self.mqtt.on_message = self.on_message
+
+    @hook
+    def on_connect(self, *args):
+        logger.debug("%s .on_connect(rc=%s)" % (self.name, args[-1]))
+        self.mqtt.subscribe(self.config["mqtt"])
+
+    @hook
+    def on_subscribe(self, *args):
+        logger.debug("%s .on_subscribe()" % self.name)
+        self.ready = True
+
+    @hook
+    def on_message(self, *args):
+        msg = args[-1]
+        logger.debug("%s .on_message(%s, %s)" % (self.name, msg.topic, msg.payload))
+
+class MqttTest:
+    def __init__(self, config):
+        self.clients = {}
         self.config = config
 
-        for attr in ["on_connect", "on_disconnect", "on_message", "on_publish", "on_subscribe", "on_unsubscribe"]:
-            def callback(*args, attr=attr):
-                print("%s: %s: %s" % (name, attr, args[1:]))
-                getattr(self, "_" + attr)(*args);
-            setattr(self, attr, callback)
+        logger.info("init")
 
-    def _on_connect(self, *args):
-        d = self.config["direction"]
-        if d == "pm":
-            self.subscribe(self.config["mqtt"])
-        elif d == "mp":
-            if self.config["datatype"] == "int":
-                self.publish(self.config["mqtt"], b"0123")
-        else:
-            raise Exception("unknown direction: " % d)
+    def __enter__(self):
+        logger.info("enter")
+        for conn in self.config["connections"]:
+            d = conn["direction"]
+            if d == "pm":
+                client = MqttReceiver(conn)
+            elif d == "mp":
+                client = MqttSender(conn)
+            else:
+                logger.error("%s: unknown direction: %s" % (self.name, self.d))
+            client.mqtt.connect(self.config["mqtt_broker_address"])
+            client.mqtt.loop_start()
+            self.clients[conn["mqtt"]] = client
+        while any([not c.ready for c in self.clients.values()]):
+            time.sleep(0.1)
+            logger.debug("sleep")
 
-    def _on_disconnect(self, *args):
-        pass
-
-    def _on_message(self, *args):
-        pass
-
-    def _on_publish(self, *args):
-        pass
-
-    def _on_subscribe(self, *args):
-        pass
-
-    def _on_unsubscribe(self, *args):
-        pass
-
-mqttcs = {}
-
-def start(config):
-    for conn in config["connections"]:
-        mqttc = MqttClient(conn)
-        mqttc.connect(config["mqtt_broker_address"])
-        mqttc.loop_start()
-        mqttcs[conn["mqtt"]] = mqttc
-
-def stop():
-    for mqttc in mqttcs.values():
-        mqttc.loop_stop()
+    def __exit__(self, *args):
+        logger.info("exit")
+        for client in self.clients.values():
+            client.mqtt.disconnect()
+            client.mqtt.loop_stop()
+        self.clients = {}

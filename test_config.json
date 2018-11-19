@@ -1,5 +1,5 @@
 {
-    "mqtt_broker_address": "127.0.0.1",
+    "mqtt_broker_address": "localhost",
     "connections": [
         {
             "mqtt": "m/wave/o/",
