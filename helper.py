@@ -11,18 +11,18 @@ def hook(logger):
         return deco
     return realhook
 
-def create_logger(name, stdout=True, file=True, path=None, level=True):
+def create_logger(name, stdout=True, file=True, path=None, level=logging.DEBUG, print_level=True):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
 
-    if level:
+    if print_level:
         ln = "%(levelname)s: "
     else:
         ln = ""
 
     if stdout:
         sh = logging.StreamHandler()
-        sh.setLevel(logging.DEBUG)
+        sh.setLevel(level)
         sh.setFormatter(logging.Formatter("[%(name)s] " + ln + "%(message)s"))
         logger.addHandler(sh)
 
@@ -30,7 +30,7 @@ def create_logger(name, stdout=True, file=True, path=None, level=True):
         if path is None:
             path = "logs/%s.log" % name
         fh = logging.FileHandler(path, mode="w")
-        fh.setLevel(logging.INFO)
+        fh.setLevel(logging.DEBUG)
         fh.setFormatter(logging.Formatter(ln + "%(message)s"))
         logger.addHandler(fh)
 

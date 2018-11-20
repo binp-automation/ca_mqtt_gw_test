@@ -9,17 +9,17 @@ record(waveform, "E_WAVE_O") {
 }
 
 record(longin, "E_INT_I") {
-    field(VAL, 0)
+	field(MDEL, -1)
 }
 
 record(longout, "E_INT_O") {
-    field(VAL, 1)
+	field(MDEL, -1)
 }
 
 record(stringin, "E_STR_I") {
-    field(VAL, "string_in")
+	field(MPST, "Always")
 }
 
 record(stringout, "E_STR_O") {
-    field(VAL, "string_out")
+	field(MPST, "Always")
 }

@@ -3,7 +3,9 @@ import epics
 from helper import *
 from proto import Client, Manager
 
-logger = create_logger("ca", stdout=False)
+import logging
+
+logger = create_logger("ca", level=logging.INFO)
 
 class CaClient(Client):
     def __init__(self, config):
@@ -14,7 +16,7 @@ class CaClient(Client):
             connection_callback=self.on_connect,
             auto_monitor=epics.dbr.DBE_VALUE
         )
-        logger.info("%s: init" % self.name)
+        logger.debug("%s: init" % self.name)
 
     def drop(self, *args):
         self.pv.disconnect()
@@ -22,24 +24,33 @@ class CaClient(Client):
     @hook(logger)
     def on_connect(self, *args, **kwargs):
         conn = kwargs["conn"]
-        if conn:
-            self.ready = True
-        logger.info("%s .on_connect(conn=%s)" % (self.name, conn))
+        logger.debug("%s .on_connect(conn=%s)" % (self.name, conn))
 
     @hook(logger)
     def on_value_change(self, *args, **kwargs):
-        logger.info("%s .on_value_change(%s)" % (self.name, kwargs["value"]))
+        value = kwargs["value"]
+        if self.d == "mp":
+            self.queue_recv(value)
+        self.ready = True
+        logger.debug("%s .on_value_change(%s)" % (self.name, value))
+
+    def send(self, data):
+        self.pv.put(data, wait=True, callback=self.on_put_complete)
+
+    @hook(logger)
+    def on_put_complete(self, *args, **kwargs):
+        logger.debug("%s .on_put_complete(%s, %s)" % (self.name, args, kwargs))
 
 class CaManager(Manager):
     def __init__(self, config):
         super().__init__(config)
-        logger.info("init")
+        logger.debug("init")
 
     def create_client(self, config):
         return CaClient(config)
 
     def enter(self):
-        logger.info("enter")
+        logger.debug("enter")
 
     def exit(self, *args):
-        logger.info("exit")
+        logger.debug("exit")
