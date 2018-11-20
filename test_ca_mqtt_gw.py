@@ -43,21 +43,26 @@ def scal_test(src, dst, ivs):
     for iv in ivs:
         src.send(iv)
     ovs = []
-    jj = 0
-    try:
-        for j in range(len(ivs)):
-            jj = j
-            ovs.append(dst.receive(timeout=1.0))
-    except TimeoutError:
-        return (False, "Receive timeout at j == %s" % j)
+    for j in range(len(ivs)):
+        try:
+            ovs.append(dst.receive(timeout=5.0))
+        except TimeoutError:
+            return (
+                False, 
+                "\n".join([
+                    "dst.receive() timeout at j == %s" % j,
+                    "ivs: %s" % repr(ivs),
+                    "ovs: %s" % repr(ovs),
+                ])
+            )
     if len(ivs) != len(ovs):
         return (
             False, 
-            "\n".join(
+            "\n".join([
                 "Input and output length mismatch: %s != %s" % (len(ivs), len(ovs)),
                 "ivs: %s" % repr(ivs),
                 "ovs: %s" % repr(ovs),
-            )
+            ])
         )
     match = [iv == ov for iv, ov in zip(ivs, ovs)]
     desc = "\n".join(["%s %s= %s" % (repr(iv), "!="[int(m)], repr(ov)) for m, iv, ov in zip(match, ivs, ovs)])
@@ -81,14 +86,14 @@ def pm_str():
     return scal_test(
         ca["E_STR_O"],
         mqtt["m/str/i"],
-        ["", "", "abcdef", "абвгдеё", "您好", "\n\t\r"],
+        ["", "", "abcdef", "абвгдеё", "您好", "a b", "a ", "\n\t\r"],
     )
 
 def mp_str():
     return scal_test(
         mqtt["m/str/o"],
         ca["E_STR_I"],
-        ["", "", "abcdef", "абвгдеё", "您好", "\n\t\r"],
+        ["", "", "abcdef", "абвгдеё", "您好", "a b", "a ", "\n\t\r"],
     )
 
 tests = [
@@ -107,24 +112,24 @@ with ioc, ca, mqtt, gw:
     try:
         while run:
             try:
-                fn = next(it)[0]
+                fn, fname = next(it)
             except StopIteration:
                 break
-            results.append(fn())
+            r = fn()
+            results.append(r)
+            s = ("fail", "ok")[int(r[0])]
+            logger.info("[%s] %s:\n\t%s" % (s, fname, r[1].replace("\n", "\n\t")))
+
     except KeyboardInterrupt:
         logger.info("caught ^C, exiting")
         run = False
 
-    results.extend([None for _ in range(len(tests) - len(results))])
+    for fn, fname in tests[len(results):]:
+        logger.info("[skip] %s" % fname)
+        results.append((None, ""))
+
     logger.info("completed")
 
-for t, r in zip(tests, results):
-    s = "skip"
-    if r[0] is True:
-        s = "ok"
-    elif r[0] is False:
-        s = "fail"
-    logger.info("[%s] %s:\n\t%s" % (s, t[1], r[1].replace("\n", "\n\t")))
 if all(list(zip(*results))[0]):
     logger.info("[ok] passed")
     exit(0)

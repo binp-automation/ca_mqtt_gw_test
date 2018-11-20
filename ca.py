@@ -32,14 +32,14 @@ class CaClient(Client):
         if self.d == "mp":
             self.queue_recv(value)
         self.ready = True
-        logger.debug("%s .on_value_change(%s)" % (self.name, value))
+        logger.debug("%s .on_value_change(%s)" % (self.name, repr(value)))
 
     def send(self, data):
         self.pv.put(data, wait=True, callback=self.on_put_complete)
 
     @hook(logger)
     def on_put_complete(self, *args, **kwargs):
-        logger.debug("%s .on_put_complete(%s, %s)" % (self.name, args, kwargs))
+        logger.debug("%s .on_put_complete" % (self.name))
 
 class CaManager(Manager):
     def __init__(self, config):
