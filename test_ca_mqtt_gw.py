@@ -2,6 +2,7 @@
 
 import json
 import time
+import numpy as np
 
 import traceback
 import logging
@@ -38,12 +39,14 @@ gw = Process(
 ca = CaManager(config)
 mqtt = MqttManager(config)
 
-def scal_test(src, dst, ivs):
+def test_seq(src, dst, ivs, rvs=None, cmp=lambda a, b: a == b):
     dst.clear()
     for iv in ivs:
         src.send(iv)
+    if rvs is None:
+        rvs = ivs
     ovs = []
-    for j in range(len(ivs)):
+    for j in range(len(rvs)):
         try:
             ovs.append(dst.receive(timeout=5.0))
         except TimeoutError:
@@ -51,57 +54,189 @@ def scal_test(src, dst, ivs):
                 False, 
                 "\n".join([
                     "dst.receive() timeout at j == %s" % j,
-                    "ivs: %s" % repr(ivs),
+                    "rvs: %s" % repr(rvs),
                     "ovs: %s" % repr(ovs),
                 ])
             )
-    if len(ivs) != len(ovs):
+    if len(rvs) != len(ovs):
         return (
             False, 
             "\n".join([
-                "Input and output length mismatch: %s != %s" % (len(ivs), len(ovs)),
-                "ivs: %s" % repr(ivs),
+                "Input and output length mismatch: %s != %s" % (len(rvs), len(ovs)),
+                "rvs: %s" % repr(rvs),
                 "ovs: %s" % repr(ovs),
             ])
         )
-    match = [iv == ov for iv, ov in zip(ivs, ovs)]
-    desc = "\n".join(["%s %s= %s" % (repr(iv), "!="[int(m)], repr(ov)) for m, iv, ov in zip(match, ivs, ovs)])
+    match = [cmp(iv, ov) for iv, ov in zip(rvs, ovs)]
+    desc = "\n".join(["%s %s= %s" % (repr(iv), "!="[int(m)], repr(ov)) for m, iv, ov in zip(match, rvs, ovs)])
     return (all(match), desc)
 
+tests = []
+iwfid = 1
+owfid = 1
+
+def test(fn):
+    tests.append(fn)
+    return fn
+
+@test
 def pm_int():
-    return scal_test(
+    return test_seq(
         ca["E_INT_O"],
         mqtt["m/int/i"],
         [0, 1, 1, 42, -1, -123, 0x7FFFFFFF, -0x80000000],
     )
 
+@test
 def mp_int():
-    return scal_test(
+    return test_seq(
         mqtt["m/int/o"],
         ca["E_INT_I"],
         [0, 1, 1, 42, -1, -123, 0x7FFFFFFF, -0x80000000],
     )
 
+@test
 def pm_str():
-    return scal_test(
+    return test_seq(
         ca["E_STR_O"],
         mqtt["m/str/i"],
-        ["", "", "abcdef", "абвгдеё", "您好", "a b", "a ", "\n\t\r"],
+        ["", "", "abcdef", "абвгдеё", "您好"],
     )
 
+@test
 def mp_str():
-    return scal_test(
+    return test_seq(
         mqtt["m/str/o"],
         ca["E_STR_I"],
-        ["", "", "abcdef", "абвгдеё", "您好", "a b", "a ", "\n\t\r"],
+        ["", "", "abcdef", "абвгдеё", "您好"],
     )
 
-tests = [
-    (pm_int, "pm_int"),
-    (mp_int, "mp_int"),
-    (pm_str, "pm_str"),
-    (mp_str, "mp_str"),
-]
+@test
+def pm_str_ws():
+    return test_seq(
+        ca["E_STR_O"],
+        mqtt["m/str/i"],
+        [" a", "a b", "a ", " ", "\n\t\r"],
+    )
+
+@test
+def mp_str_ws():
+    return test_seq(
+        mqtt["m/str/o"],
+        ca["E_STR_I"],
+        [" a", "a b", "a ", " ", "\n\t\r"],
+    )
+
+@test
+def pm_wf():
+    global iwfid
+    res = test_seq(
+        ca["E_WAVE_O"],
+        mqtt["m/wave/i/"],
+        [np.arange(10)],
+        [(0, np.concatenate(([iwfid, 10], np.arange(10))))],
+        cmp=lambda a, b: a[0] == b[0] and np.array_equal(a[1], b[1]),
+    )
+    iwfid += 1
+    return res
+
+@test
+def mp_wf():
+    global owfid
+    res = test_seq(
+        mqtt["m/wave/o/"],
+        ca["E_WAVE_I"],
+        [(0, np.concatenate(([owfid, 10], np.arange(10))))],
+        [np.arange(10)],
+        cmp=lambda a, b: np.array_equal(a, b)
+    )
+    owfid += 1
+    return res
+
+@test
+def pm_wf_l():
+    global iwfid
+    res = test_seq(
+        ca["E_WAVE_O"],
+        mqtt["m/wave/i/"],
+        [np.arange(600)],
+        [
+            (0, np.concatenate(([iwfid, 600], np.arange(0, 300)))),
+            (1, np.concatenate(([iwfid, 600], np.arange(300, 600)))),
+        ],
+        cmp=lambda a, b: a[0] == b[0] and np.array_equal(a[1], b[1]),
+    )
+    iwfid += 1
+    return res
+
+@test
+def mp_wf_l():
+    global owfid
+    res = test_seq(
+        mqtt["m/wave/o/"],
+        ca["E_WAVE_I"],
+        [
+            (0, np.concatenate(([owfid, 600], np.arange(0, 300)))),
+            (1, np.concatenate(([owfid, 600], np.arange(300, 600)))),
+        ],
+        [np.arange(600)],
+        cmp=lambda a, b: np.array_equal(a, b)
+    )
+    owfid += 1
+    return res
+
+@test
+def mp_wf_cat():
+    global owfid
+    res = test_seq(
+        mqtt["m/wave/o/"],
+        ca["E_WAVE_I"],
+        [
+            (0, np.concatenate(([owfid, 20], np.arange(0, 10)))),
+            (1, np.concatenate(([owfid, 20], np.arange(10, 20)))),
+        ],
+        [np.arange(20)],
+        cmp=lambda a, b: np.array_equal(a, b)
+    )
+    owfid += 1
+    return res
+
+@test
+def mp_wf_1212():
+    global owfid
+    res = test_seq(
+        mqtt["m/wave/o/"],
+        ca["E_WAVE_I"],
+        [
+            (0, np.concatenate(([owfid, 20], np.arange(0, 10)))),
+            (0, np.concatenate(([owfid + 1, 20], np.arange(-20, -10)))),
+            (1, np.concatenate(([owfid, 20], np.arange(10, 20)))),
+            (1, np.concatenate(([owfid + 1, 20], np.arange(-10, 0)))),
+        ],
+        [np.arange(20), np.arange(-20, 0)],
+        cmp=lambda a, b: np.array_equal(a, b)
+    )
+    owfid += 2
+    return res
+
+@test
+def mp_wf_1221():
+    global owfid
+    res = test_seq(
+        mqtt["m/wave/o/"],
+        ca["E_WAVE_I"],
+        [
+            (0, np.concatenate(([owfid, 20], np.arange(0, 10)))),
+            (0, np.concatenate(([owfid + 1, 20], np.arange(-20, -10)))),
+            (1, np.concatenate(([owfid + 1, 20], np.arange(-10, 0)))),
+            (1, np.concatenate(([owfid, 20], np.arange(10, 20)))),
+        ],
+        [np.arange(-20, 0)],
+        cmp=lambda a, b: np.array_equal(a, b)
+    )
+    owfid += 2
+    return res
+
 results = []
 
 run = True
@@ -112,13 +247,14 @@ with ioc, ca, mqtt, gw:
     try:
         while run:
             try:
-                fn, fname = next(it)
+                fn = next(it)
             except StopIteration:
                 break
             r = fn()
             results.append(r)
             s = ("fail", "ok")[int(r[0])]
-            logger.info("[%s] %s:\n\t%s" % (s, fname, r[1].replace("\n", "\n\t")))
+            logger.info("[%s] %s" % (s, fn.__name__))
+            logger.debug("description:\n\t%s" % r[1].replace("\n", "\n\t"))
 
     except KeyboardInterrupt:
         logger.info("caught ^C, exiting")
@@ -129,10 +265,11 @@ with ioc, ca, mqtt, gw:
         results.append((None, ""))
 
     logger.info("completed")
+    time.sleep(1.0)
 
 if all(list(zip(*results))[0]):
-    logger.info("[ok] passed")
+    logger.info("[ok] all tests passed")
     exit(0)
 else:
-    logger.error("[fail] some tests failed")
+    logger.info("[fail] some tests failed or skipped")
     exit(1)

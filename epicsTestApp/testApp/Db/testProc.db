@@ -1,10 +1,10 @@
 record(waveform, "E_WAVE_I") {
-    field(NELM, "600")
+    field(NELM, "1200")
     field(FTVL, "LONG")
 }
 
 record(waveform, "E_WAVE_O") {
-    field(NELM, "600")
+    field(NELM, "1200")
     field(FTVL, "LONG")
 }
 

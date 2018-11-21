@@ -1,4 +1,5 @@
 import struct
+import numpy as np
 import paho.mqtt.client as mqtt
 import traceback
 import logging
@@ -8,31 +9,31 @@ from proto import Client, Manager
 
 logger = create_logger("mqtt", level=logging.INFO)
 
-def decode(payload, dtype):
-    if dtype == "int":
-        value = struct.unpack(">i", payload)[0]
-    elif dtype == "string":
-        value = payload.decode("utf-8")
-    elif dtype == "wfint":
-        raise NotImplementedError
-    else:
-        msg = "unknown datatype: %s" % dtype
-        logger.error(msg)
-        raise Exception(msg)
-    return value
-
 def encode(value, dtype):
     if dtype == "int":
         payload = struct.pack(">i", value)
     elif dtype == "string":
         payload = value.encode("utf-8")
     elif dtype == "wfint":
-        raise NotImplementedError
+        payload = value.astype(">i4").tobytes()
     else:
         msg = "unknown datatype: %s" % dtype
         logger.error(msg)
         raise Exception(msg)
     return payload
+
+def decode(payload, dtype):
+    if dtype == "int":
+        value = struct.unpack(">i", payload)[0]
+    elif dtype == "string":
+        value = payload.decode("utf-8")
+    elif dtype == "wfint":
+        value = np.ndarray(shape=(-1,), dtype='>i4', buffer=payload).astype(np.int32)
+    else:
+        msg = "unknown datatype: %s" % dtype
+        logger.error(msg)
+        raise Exception(msg)
+    return value
 
 class MqttClient(Client):
     def __init__(self, config):
@@ -66,6 +67,11 @@ class MqttSender(MqttClient):
 
     def send(self, data):
         topic = self.config["mqtt"]
+        if self.dtype.startswith("wf"):
+            idx, data = data
+            if not topic.endswith("/"):
+                topic += "/"
+            topic += str(idx).zfill(3)
         payload = encode(data, self.dtype)
         mi = self.mqtt.publish(topic, payload, qos=self.qos)
         mi.wait_for_publish()
@@ -97,7 +103,12 @@ class MqttReceiver(MqttClient):
     @hook(logger)
     def on_message(self, *args):
         msg = args[-1]
-        self.queue_recv(decode(msg.payload, self.dtype))
+        value = decode(msg.payload, self.dtype) 
+        if self.dtype.startswith("wf"):
+            idx = int(msg.topic.split("/")[-1])
+            self.queue_recv((idx, value))
+        else:
+            self.queue_recv(value)
         logger.debug("%s .on_message(%s, %s)" % (self.name, msg.topic, msg.payload))
 
 class MqttManager(Manager):
