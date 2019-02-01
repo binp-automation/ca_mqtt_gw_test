@@ -124,7 +124,7 @@ def mp_str_ws():
     return test_seq(
         mqtt["m/str/o"],
         ca["E_STR_I"],
-        [" a", "a b"] #, "a ", " ", "\n\t\r"],
+        [" a", "a b"], #, "a ", " ", "\n\t\r"],
         # TODO: fix whitespace loss
     )
 
@@ -155,6 +155,14 @@ def mp_wf():
     return res
 
 @test
+def pm_wf_idx():
+    return test_seq(
+        ca["E_WAVE_IDX_O"],
+        mqtt["m/wave/i/idx"],
+        [0, 1, 1, 42, -1, -123, 0x7FFFFFFF, -0x80000000],
+    )
+
+#@test
 def pm_wf_l():
     global iwfid
     res = test_seq(
@@ -170,7 +178,7 @@ def pm_wf_l():
     iwfid += 1
     return res
 
-@test
+#@test
 def mp_wf_l():
     global owfid
     res = test_seq(
@@ -186,7 +194,7 @@ def mp_wf_l():
     owfid += 1
     return res
 
-@test
+#@test
 def mp_wf_cat():
     global owfid
     res = test_seq(
@@ -202,7 +210,7 @@ def mp_wf_cat():
     owfid += 1
     return res
 
-@test
+#@test
 def mp_wf_1212():
     global owfid
     res = test_seq(
@@ -220,7 +228,7 @@ def mp_wf_1212():
     owfid += 2
     return res
 
-@test
+#@test
 def mp_wf_1221():
     global owfid
     res = test_seq(

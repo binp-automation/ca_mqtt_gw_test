@@ -8,6 +8,10 @@ record(waveform, "E_WAVE_O") {
     field(FTVL, "LONG")
 }
 
+record(longin, "E_WAVE_IDX_O") {
+	field(MDEL, -1)
+}
+
 record(longin, "E_INT_I") {
 	field(MDEL, -1)
 }
