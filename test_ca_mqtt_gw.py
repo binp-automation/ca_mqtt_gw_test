@@ -272,5 +272,5 @@ if all(list(zip(*results))[0]):
     logger.info("[ok] all tests passed")
     exit(0)
 else:
-    logger.info("[fail] some tests failed or skipped")
+    logger.info("[fail] some tests failed")
     exit(1)

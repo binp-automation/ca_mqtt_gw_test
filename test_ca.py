@@ -10,22 +10,22 @@ import time
 state = 0
 
 values_old = {
-	"INT": 0,
-	"STRING": "initial",
-	"WAVEFORM": np.zeros(100, dtype=np.int32),
+	"E_INT_O": 0,
+	"E_STR_O": "initial",
+	"E_WAVE_O": np.zeros(100, dtype=np.int32),
 }
 
 values_new = {
-	"INT": 1,
-	"STRING": "changed",
-	"WAVEFORM": np.arange(100, dtype=np.int32),
+	"E_INT_O": 1,
+	"E_STR_O": "changed",
+	"E_WAVE_O": np.arange(100, dtype=np.int32),
 }
 
 def test(val):
 	if not val:
 		raise Exception()
 
-pvnames = ["INT", "STRING", "WAVEFORM"]
+pvnames = ["E_INT_O", "E_STR_O", "E_WAVE_O"]
 pvs = {}
 for pvname in pvnames:
 	def callback(*args, pvname=pvname, **kwargs):
