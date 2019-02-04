@@ -103,13 +103,16 @@ class MqttReceiver(MqttClient):
     @hook(logger)
     def on_message(self, *args):
         msg = args[-1]
+        logger.debug("%s : %s .on_message(%s, %s)" % (self.name, self.dtype, msg.topic, msg.payload))
         value = decode(msg.payload, self.dtype) 
         if self.dtype.startswith("wf"):
-            idx = int(msg.topic.split("/")[-1])
+            try:
+                idx = int(msg.topic.split("/")[-1])
+            except ValueError:
+                return
             self.queue_recv((idx, value))
         else:
             self.queue_recv(value)
-        logger.debug("%s .on_message(%s, %s)" % (self.name, msg.topic, msg.payload))
 
 class MqttManager(Manager):
     def __init__(self, config):

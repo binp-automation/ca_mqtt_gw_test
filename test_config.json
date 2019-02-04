@@ -16,6 +16,13 @@
             "qos": 2
         },
         {
+            "mqtt": "m/wave/i/idx",
+            "pv": "E_WAVE_IDX_O",
+            "direction": "pm",
+            "datatype": "int",
+            "qos": 2
+        },
+        {
             "mqtt": "m/int/o",
             "pv": "E_INT_I",
             "direction": "mp",
