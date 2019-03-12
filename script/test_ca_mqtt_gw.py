@@ -7,16 +7,32 @@ import numpy as np
 import traceback
 import logging
 
-from helper import *
-from process import Process
-from mqtt import MqttManager
-from ca import CaManager
+from lib.helper import *
+from lib.process import Process
+from lib.mqtt import MqttManager
+from lib.ca import CaManager
 
 
 logger = create_logger("test")
 
-with open("test_config.json") as f:
+SEND_DELAY = 0.1 # sec
+
+with open("./config/ca_mqtt_gw.json") as f:
     config = json.loads(f.read())
+
+mosquitto = Process(
+    name="mosquitto",
+    proc_args=["./mosquitto/src/mosquitto"],
+    log="logs/mosquitto.log",
+    stdout_print=False,
+)
+
+repeater = Process(
+    name="repeater",
+    proc_args=["caRepeater"],
+    log="logs/repeater.log",
+    stdout_print=False,
+)
 
 ioc = Process(
     name="ioc",
@@ -30,7 +46,7 @@ ioc = Process(
 
 gw = Process(
     name="gw",
-    proc_args=["../venv2.7/bin/python", "ca_mqtt_gw/ca_mqtt_gw.py", "test_config.json"],
+    proc_args=["./venv2/bin/python", "ca_mqtt_gw/ca_mqtt_gw.py", "./config/ca_mqtt_gw.json"],
     #must_kill=True,
     log="logs/gw.log",
     stdout_print=False,
@@ -43,12 +59,13 @@ def test_seq(src, dst, ivs, rvs=None, cmp=lambda a, b: a == b):
     dst.clear()
     for iv in ivs:
         src.send(iv)
+        time.sleep(SEND_DELAY)
     if rvs is None:
         rvs = ivs
     ovs = []
     for j in range(len(rvs)):
         try:
-            ovs.append(dst.receive(timeout=5.0))
+            ovs.append(dst.receive(timeout=10.0))
         except TimeoutError:
             return (
                 False, 
@@ -124,7 +141,7 @@ def mp_str_ws():
     return test_seq(
         mqtt["m/str/o"],
         ca["E_STR_I"],
-        [" a", "a b"] #, "a ", " ", "\n\t\r"],
+        [" a", "a b"], #, "a ", " ", "\n\t\r"],
         # TODO: fix whitespace loss
     )
 
@@ -153,6 +170,14 @@ def mp_wf():
     )
     owfid += 1
     return res
+
+@test
+def pm_wf_idx():
+    return test_seq(
+        ca["E_WAVE_IDX_O"],
+        mqtt["m/wave/i/idx"],
+        [0, 1, 1, 42, -1, -123, 0x7FFFFFFF, -0x80000000],
+    )
 
 @test
 def pm_wf_l():
@@ -241,7 +266,7 @@ def mp_wf_1221():
 results = []
 
 run = True
-with ioc, ca, mqtt, gw:
+with mosquitto, repeater, ioc, ca, mqtt, gw:
     time.sleep(1.0)
     logger.info("start")
     it = iter(tests)
