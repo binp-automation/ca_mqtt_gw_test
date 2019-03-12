@@ -62,7 +62,7 @@ def test_seq(src, dst, ivs, rvs=None, cmp=lambda a, b: a == b):
     ovs = []
     for j in range(len(rvs)):
         try:
-            ovs.append(dst.receive(timeout=5.0))
+            ovs.append(dst.receive(timeout=10.0))
         except TimeoutError:
             return (
                 False, 
