@@ -7,6 +7,15 @@
 from threading import Thread
 import paho.mqtt.client as mqtt
 
+from lib.process import Process
+
+mosquitto = Process(
+    name="mosquitto",
+    proc_args=["./mosquitto/src/mosquitto"],
+    log="logs/mosquitto.log",
+    stdout_print=False,
+)
+
 topic = "hello"
 payload = "Hello, MQTT!".encode("utf-8")
 
@@ -50,11 +59,14 @@ def receive():
     mqttc.loop_forever()
     sender_thread.join()
 
-receiver_thread = Thread(target=receive)
-receiver_thread.start()
-receiver_thread.join()
+with mosquitto:
+    receiver_thread = Thread(target=receive)
+    receiver_thread.start()
+    receiver_thread.join()
 
-if passed:
-    print("[ok] test passed")
-else:
-    print("[error] test failed")
+    if passed:
+        print("[ok] test passed")
+        exit(0)
+    else:
+        print("[error] test failed")
+        exit(1)

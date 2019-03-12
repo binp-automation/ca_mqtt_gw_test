@@ -1,7 +1,7 @@
 import epics
 
-from helper import *
-from proto import Client, Manager
+from lib.helper import *
+from lib.proto import Client, Manager
 
 import logging
 

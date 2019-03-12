@@ -1,0 +1,23 @@
+language: cpp
+
+os: linux
+dist: xenial
+sudo: required
+compiler: gcc
+addons:
+  apt:
+    packages:
+      - libc-ares-dev
+      - uuid-dev
+      - libreadline-dev
+      - libpython-dev
+      - python-qt4
+      - python-virtualenv
+      - python3-virtualenv
+
+before_script:
+  ./prepare.sh &&
+  ./build.sh
+
+script:
+  ./test.sh
