@@ -1,2 +1,6 @@
 __pycache__
 logs
+
+epics-base
+mosquitto
+venv2.7
