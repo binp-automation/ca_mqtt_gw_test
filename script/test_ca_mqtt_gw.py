@@ -15,6 +15,8 @@ from lib.ca import CaManager
 
 logger = create_logger("test")
 
+SEND_DELAY = 0.1 # sec
+
 with open("./config/ca_mqtt_gw.json") as f:
     config = json.loads(f.read())
 
@@ -57,6 +59,7 @@ def test_seq(src, dst, ivs, rvs=None, cmp=lambda a, b: a == b):
     dst.clear()
     for iv in ivs:
         src.send(iv)
+        time.sleep(SEND_DELAY)
     if rvs is None:
         rvs = ivs
     ovs = []
