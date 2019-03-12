@@ -4,8 +4,8 @@ import paho.mqtt.client as mqtt
 import traceback
 import logging
 
-from helper import *
-from proto import Client, Manager
+from lib.helper import *
+from lib.proto import Client, Manager
 
 logger = create_logger("mqtt", level=logging.INFO)
 

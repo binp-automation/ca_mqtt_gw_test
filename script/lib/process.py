@@ -4,7 +4,7 @@ from subprocess import Popen, PIPE, STDOUT
 
 import logging
 
-from helper import *
+from lib.helper import *
 
 class Process:
     def fpipe(self):

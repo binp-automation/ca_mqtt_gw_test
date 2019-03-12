@@ -7,16 +7,30 @@ import numpy as np
 import traceback
 import logging
 
-from helper import *
-from process import Process
-from mqtt import MqttManager
-from ca import CaManager
+from lib.helper import *
+from lib.process import Process
+from lib.mqtt import MqttManager
+from lib.ca import CaManager
 
 
 logger = create_logger("test")
 
-with open("test_config.json") as f:
+with open("./config/ca_mqtt_gw.json") as f:
     config = json.loads(f.read())
+
+mosquitto = Process(
+    name="mosquitto",
+    proc_args=["./mosquitto/src/mosquitto"],
+    log="logs/mosquitto.log",
+    stdout_print=False,
+)
+
+repeater = Process(
+    name="repeater",
+    proc_args=["caRepeater"],
+    log="logs/repeater.log",
+    stdout_print=False,
+)
 
 ioc = Process(
     name="ioc",
@@ -30,7 +44,7 @@ ioc = Process(
 
 gw = Process(
     name="gw",
-    proc_args=["../venv2.7/bin/python", "ca_mqtt_gw/ca_mqtt_gw.py", "test_config.json"],
+    proc_args=["./venv2/bin/python", "ca_mqtt_gw/ca_mqtt_gw.py", "./config/ca_mqtt_gw.json"],
     #must_kill=True,
     log="logs/gw.log",
     stdout_print=False,
@@ -241,7 +255,7 @@ def mp_wf_1221():
 results = []
 
 run = True
-with ioc, ca, mqtt, gw:
+with mosquitto, repeater, ioc, ca, mqtt, gw:
     time.sleep(1.0)
     logger.info("start")
     it = iter(tests)
